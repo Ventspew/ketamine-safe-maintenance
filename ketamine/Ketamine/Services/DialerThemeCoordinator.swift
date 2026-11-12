@@ -46,50 +46,59 @@ enum DialerThemeCoordinator {
         }
     }
 
-    /// Resolves a usable cached hash or explains the missing-cache condition.
-    /// Does not invent UUIDs. Optional `discover` closure may perform existing
-    /// privileged discovery; this coordinator never implements discovery itself.
+    /// Resolves a Phone container reference when available.
+    /// Returns `nil` when no hash exists but the global TelephonyUI cache may
+    /// still be reachable (Ketamine 2.1b1 layout). Does not invent UUIDs.
     static func resolvePhoneHash(
         cached: String,
         discover: () throws -> String
-    ) throws -> String {
+    ) throws -> String? {
         DiagnosticLog.shared.info("THEME_TARGET", "Target: Phone dialer")
-        switch ContainerIdentity.classify(cached) {
-        case .presentUnverified(let uuid):
+        if let normalized = BadQuery.normalizeContainerReference(cached) {
             DiagnosticLog.shared.info(
                 "THEME_CACHE",
-                "Using cached container identifier \(FeatureAccessState.redact(uuid.uuidString))"
+                "Using cached container identifier \(FeatureAccessState.redact(normalized.uuid))"
             )
-            return uuid.uuidString
-        case .invalidFormat(let raw):
+            return normalized.uuid
+        }
+        let trimmed = cached.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
             DiagnosticLog.shared.error("THEME_CACHE", "Invalid cached identifier")
-            throw CoordinatorError.invalidCachedIdentifier(raw)
-        case .empty:
-            DiagnosticLog.shared.warn("THEME_CACHE", "No cached container identifier")
-            DiagnosticLog.shared.info("THEME_RESOLVE", "Checking supported resolution methods")
-            do {
-                let found = try discover().trimmingCharacters(in: .whitespacesAndNewlines)
-                switch ContainerIdentity.classify(found) {
-                case .presentUnverified(let uuid):
-                    DiagnosticLog.shared.info(
-                        "THEME_RESOLVE",
-                        "Discovery returned \(FeatureAccessState.redact(uuid.uuidString))"
-                    )
-                    return uuid.uuidString
-                case .empty, .invalidFormat:
-                    DiagnosticLog.shared.error("THEME_RESOLVE", "Discovery returned unusable identifier")
-                    throw CoordinatorError.missingCachedIdentifier
-                }
-            } catch is CoordinatorError {
-                throw CoordinatorError.missingCachedIdentifier
-            } catch {
-                DiagnosticLog.shared.error(
+            throw CoordinatorError.invalidCachedIdentifier(trimmed)
+        }
+
+        DiagnosticLog.shared.warn("THEME_CACHE", "No cached container identifier")
+        DiagnosticLog.shared.info("THEME_RESOLVE", "Checking supported resolution methods")
+        do {
+            let found = try discover().trimmingCharacters(in: .whitespacesAndNewlines)
+            if let normalized = BadQuery.normalizeContainerReference(found) {
+                DiagnosticLog.shared.info(
                     "THEME_RESOLVE",
-                    "Container unavailable — \(error.localizedDescription)"
+                    "Discovery returned \(FeatureAccessState.redact(normalized.uuid))"
                 )
-                DiagnosticLog.shared.info("THEME_ABORT", "Theme installation aborted safely")
-                throw CoordinatorError.missingCachedIdentifier
+                return normalized.uuid
             }
+        } catch {
+            DiagnosticLog.shared.warn(
+                "THEME_RESOLVE",
+                "Bundle discovery failed — \(error.localizedDescription); trying global TelephonyUI paths"
+            )
+        }
+
+        // 2.1b1-compatible fallback: proceed without a Phone UUID if global
+        // TelephonyUI caches can be opened with the existing consume API.
+        do {
+            let path = try BadQuery.resolveTelephonyUIPath(appHash: nil)
+            DiagnosticLog.shared.info("THEME_RESOLVE", "Using TelephonyUI path without Phone UUID")
+            _ = path
+            return nil
+        } catch {
+            DiagnosticLog.shared.error(
+                "THEME_RESOLVE",
+                "Container unavailable — \(error.localizedDescription)"
+            )
+            DiagnosticLog.shared.info("THEME_ABORT", "Theme installation aborted safely")
+            throw CoordinatorError.missingCachedIdentifier
         }
     }
 }

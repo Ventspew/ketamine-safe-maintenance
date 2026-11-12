@@ -223,10 +223,15 @@ struct PosterBoardView: View {
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 var hash = pbHash
-                if hash.isEmpty {
+                if let normalized = BadQuery.normalizeContainerReference(hash) {
+                    hash = normalized.uuid
+                } else if hash.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     hash = try BadQuery.findPosterBoardHash()
-                    DispatchQueue.main.async { pbHash = hash }
+                } else if BadQuery.normalizeContainerReference(hash) == nil {
+                    // Invalid cached value — rediscover rather than building a bad path.
+                    hash = try BadQuery.findPosterBoardHash()
                 }
+                DispatchQueue.main.async { pbHash = hash }
                 try pbManager.applyTendies(appHash: hash)
                 DispatchQueue.main.async {
                     pbManager.selectedTendies.removeAll()

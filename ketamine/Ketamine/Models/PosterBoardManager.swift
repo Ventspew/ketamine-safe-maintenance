@@ -10,6 +10,7 @@
 import Foundation
 import ObjectiveC
 import ZIPFoundation
+import KetamineSafeCore
 
 final class PosterBoardManager: ObservableObject {
 
@@ -175,9 +176,12 @@ final class PosterBoardManager: ObservableObject {
         return destinationURL
     }
 
-    private static let collectionsExt = "com.apple.WallpaperKit.CollectionsPoster"
-    private static let photosExt = "com.apple.PhotosUIPrivate.PhotosPosterProvider"
-    private static let descriptorMarker = "com.apple.posterkit.provider.descriptor.identifier"
+    private static let collectionsExt = WallpaperDescriptorInspector.collectionsExt
+    private static let descriptorMarker = WallpaperDescriptorInspector.descriptorMarker
+
+    static func providerExtension(forDescriptorParentName parentName: String) -> String {
+        WallpaperDescriptorInspector.providerExtension(forDescriptorParentName: parentName)
+    }
 
     private static func isDirectory(_ url: URL) -> Bool {
         (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
@@ -190,15 +194,11 @@ final class PosterBoardManager: ObservableObject {
     }
 
     /// Deep-recurses a tendie directory looking for descriptor folders,
-    /// returning them keyed by the PosterBoard extension they belong to.
-    /// is any directory containing a `com.apple.posterkit.provider.descriptor.identifier`
-    /// file. Descriptor folders whose parent folder name contains "video" are
-    /// mapped to the Photos provider; everything else to PosterBoard
-    /// collections. Traverses twice — once per target — so every descriptor is
+    /// keyed by PosterBoard provider extension (KAMUI-compatible mapping).
     func findDescriptors(in url: URL) throws -> [String: [URL]] {
         var result: [String: [URL]] = [:]
 
-        func collect(_ current: URL, target: String, parent: URL?) {
+        func collect(_ current: URL, parent: URL?) {
             guard let items = try? FileManager.default.contentsOfDirectory(
                 at: current, includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]) else { return }
@@ -206,22 +206,16 @@ final class PosterBoardManager: ObservableObject {
             for item in items {
                 guard item.lastPathComponent != "__MACOSX" else { continue }
                 if Self.isDescriptorFolder(item) {
-                    let parentName = parent?.lastPathComponent.lowercased() ?? ""
-                    if target == Self.photosExt {
-                        if parentName.contains("video") {
-                            result[target, default: []].append(item)
-                        }
-                    } else if !parentName.contains("video") {
-                        result[Self.collectionsExt, default: []].append(item)
-                    }
+                    let parentName = parent?.lastPathComponent ?? ""
+                    let ext = Self.providerExtension(forDescriptorParentName: parentName)
+                    result[ext, default: []].append(item)
                 } else if Self.isDirectory(item) {
-                    collect(item, target: target, parent: item)
+                    collect(item, parent: item)
                 }
             }
         }
 
-        collect(url, target: Self.photosExt, parent: nil)
-        collect(url, target: Self.collectionsExt, parent: nil)
+        collect(url, parent: nil)
         return result
     }
 

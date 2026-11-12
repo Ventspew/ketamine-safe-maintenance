@@ -187,9 +187,11 @@ struct PasscodeThemeView: View {
                 let hash = try DialerThemeCoordinator.resolvePhoneHash(cached: phoneHash) {
                     try BadQuery.findMobilePhoneHash()
                 }
-                DispatchQueue.main.async { phoneHash = hash }
+                if let hash {
+                    DispatchQueue.main.async { phoneHash = hash }
+                }
 
-                let count = try PasscodeThemeManager.shared.applyTheme(from: url, appHash: hash)
+                let count = try PasscodeThemeManager.shared.applyTheme(from: url, appHash: hash ?? "")
                 DiagnosticLog.shared.info("THEME_DONE", "Replaced \(count) image(s)")
                 DispatchQueue.main.async {
                     isBusy = false
@@ -218,8 +220,8 @@ struct PasscodeThemeView: View {
                 let hash = try DialerThemeCoordinator.resolvePhoneHash(cached: phoneHash) {
                     try BadQuery.findMobilePhoneHash()
                 }
-                DispatchQueue.main.async { phoneHash = hash }
-                try PasscodeThemeManager.shared.restoreOriginal(appHash: hash)
+                if let hash { DispatchQueue.main.async { phoneHash = hash } }
+                try PasscodeThemeManager.shared.restoreOriginal(appHash: hash ?? "")
                 DispatchQueue.main.async {
                     isBusy = false
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -244,8 +246,8 @@ struct PasscodeThemeView: View {
                 let hash = try DialerThemeCoordinator.resolvePhoneHash(cached: phoneHash) {
                     try BadQuery.findMobilePhoneHash()
                 }
-                DispatchQueue.main.async { phoneHash = hash }
-                let url = try PasscodeThemeManager.shared.extractImages(appHash: hash)
+                if let hash { DispatchQueue.main.async { phoneHash = hash } }
+                let url = try PasscodeThemeManager.shared.extractImages(appHash: hash ?? "")
                 DispatchQueue.main.async {
                     isBusy = false
                     extractedZipURL = url

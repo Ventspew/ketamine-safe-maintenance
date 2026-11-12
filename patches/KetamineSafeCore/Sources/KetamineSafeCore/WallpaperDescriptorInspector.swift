@@ -46,7 +46,24 @@ public enum WallpaperDescriptorInspectorError: Error, LocalizedError, Equatable 
 public enum WallpaperDescriptorInspector {
     public static let descriptorMarker = "com.apple.posterkit.provider.descriptor.identifier"
     public static let collectionsExt = "com.apple.WallpaperKit.CollectionsPoster"
+    public static let collectionsModernExt = "com.apple.Posters.CollectionsPosterApp"
+    public static let mercuryExt = "com.apple.MercuryPoster"
     public static let photosExt = "com.apple.PhotosUIPrivate.PhotosPosterProvider"
+
+    /// KAMUI-compatible provider selection from a descriptor's parent folder name.
+    public static func providerExtension(forDescriptorParentName parentName: String) -> String {
+        let lower = parentName.lowercased()
+        if lower.contains("video") || lower.contains("photos") {
+            return photosExt
+        }
+        if lower.contains("mercury") {
+            return mercuryExt
+        }
+        if lower.contains("collectionsposterapp") || lower.contains("posters.collections") {
+            return collectionsModernExt
+        }
+        return collectionsExt
+    }
 
     /// Inspect an already-extracted directory tree (unit tests / previews).
     public static func inspectExtractedDirectory(_ root: URL) throws -> WallpaperDescriptorInspection {

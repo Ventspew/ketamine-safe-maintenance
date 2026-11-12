@@ -74,9 +74,12 @@ final class PasscodeThemeManager {
         (try? fileManager.contentsOfDirectory(atPath: backupDirectory.path))?.isEmpty == false
     }
 
-    static func cachePath(appHash: String) -> String {
-        // Callers must pass `validatedAppHash` output; this never invents a UUID.
-        BadQuery.applicationContainerPath(appHash: appHash) + "/Library/Caches/TelephonyUI-10"
+    /// Resolves the live TelephonyUI directory. Prefers a known app-container
+    /// path when a valid hash exists; otherwise tries the global
+    /// `/var/mobile/Library/Caches/TelephonyUI-*` locations used by Ketamine 2.1b1.
+    static func cachePath(appHash: String) throws -> String {
+        let optionalHash = (try? validatedAppHash(appHash))
+        return try BadQuery.resolveTelephonyUIPath(appHash: optionalHash)
     }
 
     // MARK: - Locale-aware matching
@@ -95,8 +98,7 @@ final class PasscodeThemeManager {
 
     func ensureBackup(appHash: String) throws {
         guard !hasBackup else { return }
-        let appHash = try Self.validatedAppHash(appHash)
-        let livePath = Self.cachePath(appHash: appHash)
+        let livePath = try Self.cachePath(appHash: appHash)
         let handle = try BadQuery.consume(path: livePath, create: true)
         defer { handle.release() }
 
@@ -123,7 +125,6 @@ final class PasscodeThemeManager {
     /// how many files were replaced.
     @discardableResult
     func applyTheme(from packageURL: URL, appHash: String) throws -> Int {
-        let appHash = try Self.validatedAppHash(appHash)
         let accessing = packageURL.startAccessingSecurityScopedResource()
         defer { if accessing { packageURL.stopAccessingSecurityScopedResource() } }
 
@@ -134,7 +135,12 @@ final class PasscodeThemeManager {
             throw PasscodeThemeError.notZip
         }
 
-        let livePath = Self.cachePath(appHash: appHash)
+        // appHash may be empty when only the global TelephonyUI cache is reachable
+        // (Ketamine 2.1b1 layout). validatedAppHash is enforced only when non-empty.
+        if !appHash.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try Self.validatedAppHash(appHash)
+        }
+        let livePath = try Self.cachePath(appHash: appHash)
         try ensureBackup(appHash: appHash)
 
         let workDir = documentsDirectory
@@ -188,8 +194,7 @@ final class PasscodeThemeManager {
     /// Restores every PNG in the live cache to what `ensureBackup` saved.
     func restoreOriginal(appHash: String) throws {
         guard hasBackup else { throw PasscodeThemeError.noBackup }
-        let appHash = try Self.validatedAppHash(appHash)
-        let livePath = Self.cachePath(appHash: appHash)
+        let livePath = try Self.cachePath(appHash: appHash)
         let handle = try BadQuery.consume(path: livePath, create: true)
         defer { handle.release() }
 
@@ -217,8 +222,7 @@ final class PasscodeThemeManager {
         if hasBackup {
             sourceDir = backupDirectory
         } else {
-            let appHash = try Self.validatedAppHash(appHash)
-            let livePath = Self.cachePath(appHash: appHash)
+            let livePath = try Self.cachePath(appHash: appHash)
             handle = try BadQuery.consume(path: livePath, create: true)
             sourceDir = URL(fileURLWithPath: livePath)
         }

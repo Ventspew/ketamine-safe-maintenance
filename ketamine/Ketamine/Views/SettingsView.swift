@@ -153,9 +153,10 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("PosterBoard container")
             VStack(alignment: .leading, spacing: 14) {
-                TextField("Container UUID", text: $pbHash)
+                TextField("UUID or full container path", text: $pbHash)
                     .font(.system(.body, design: .monospaced))
                     .textFieldStyle(.roundedBorder)
+                    .onSubmit { pbHash = BadQuery.normalizeContainerReference(pbHash)?.uuid ?? pbHash }
                 HStack {
                     Button("Detect on device", systemImage: "scope", action: detectPosterBoardHash)
                         .disabled(detectingHash)
@@ -180,9 +181,10 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Phone app container")
             VStack(alignment: .leading, spacing: 14) {
-                TextField("Container UUID", text: $phoneHash)
+                TextField("UUID or full container path", text: $phoneHash)
                     .font(.system(.body, design: .monospaced))
                     .textFieldStyle(.roundedBorder)
+                    .onSubmit { phoneHash = BadQuery.normalizeContainerReference(phoneHash)?.uuid ?? phoneHash }
                 HStack {
                     Button("Detect on device", systemImage: "scope", action: detectPhoneHash)
                         .disabled(detectingPhoneHash)
