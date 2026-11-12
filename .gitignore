@@ -7,3 +7,6 @@ xcuserdata/
 .mcp/
 *.ipa
 *.dSYM
+research/baseline/*.ipa
+research/baseline/payload/
+builds/*.ipa
