@@ -9,6 +9,20 @@ public struct WallpaperDescriptorInspection: Sendable, Equatable {
     public let hasPhotosMarkers: Bool
     public let markerFilesFound: [String]
 
+    public init(
+        isZip: Bool,
+        descriptorFolderCount: Int,
+        hasCollectionsMarkers: Bool,
+        hasPhotosMarkers: Bool,
+        markerFilesFound: [String]
+    ) {
+        self.isZip = isZip
+        self.descriptorFolderCount = descriptorFolderCount
+        self.hasCollectionsMarkers = hasCollectionsMarkers
+        self.hasPhotosMarkers = hasPhotosMarkers
+        self.markerFilesFound = markerFilesFound
+    }
+
     public var looksLikeTendiesPack: Bool {
         isZip && descriptorFolderCount > 0
     }

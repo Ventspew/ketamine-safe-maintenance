@@ -118,6 +118,28 @@ public struct DiagnosticsSnapshot: Sendable, Equatable {
     public var posterBoardState: String
     public var lastEvents: [String]
 
+    public init(
+        deviceModel: String,
+        iosVersion: String,
+        iosBuild: String,
+        appVersion: String,
+        phoneContainerCache: String,
+        posterBoardContainerCache: String,
+        dialerThemeState: String,
+        posterBoardState: String,
+        lastEvents: [String]
+    ) {
+        self.deviceModel = deviceModel
+        self.iosVersion = iosVersion
+        self.iosBuild = iosBuild
+        self.appVersion = appVersion
+        self.phoneContainerCache = phoneContainerCache
+        self.posterBoardContainerCache = posterBoardContainerCache
+        self.dialerThemeState = dialerThemeState
+        self.posterBoardState = posterBoardState
+        self.lastEvents = lastEvents
+    }
+
     public var textualReport: String {
         """
         Device model: \(deviceModel)

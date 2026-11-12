@@ -8,6 +8,13 @@ public struct ThemePackageInspection: Sendable, Equatable {
     public let sampleFilenames: [String]
     public let isZip: Bool
 
+    public init(imageCount: Int, distinctKeys: [String], sampleFilenames: [String], isZip: Bool) {
+        self.imageCount = imageCount
+        self.distinctKeys = distinctKeys
+        self.sampleFilenames = sampleFilenames
+        self.isZip = isZip
+    }
+
     public var summary: String {
         "\(imageCount) image\(imageCount == 1 ? "" : "s") · \(distinctKeys.count) key\(distinctKeys.count == 1 ? "" : "s") styled"
     }
